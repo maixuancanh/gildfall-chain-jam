@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.*
+*.log
+coverage/
+.local-node/
+artifacts/
+reference/
+.codex/
+.claude/
+.openai/

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "apiVersion": 1,
+  "gameId": "JinxwellGame",
+  "defaultLocale": "en",
+  "locales": {"en": {"name": "Jinxwell", "description": "Ride a rope elevator into the cavern and cast for bobbing chests. Choose your route, depth and wager before each haul. A cable strike can cost you the treasure; a Boom shield can save it."}},
+  "presentation": {"mode": "full-iframe", "hostPanels": {"openSession": false, "history": false, "status": false}},
+  "capabilities": {"openSession": true, "submitAction": false, "forfeitExpiredSession": false, "cancelStuckRandomness": true, "resize": true}
+}
