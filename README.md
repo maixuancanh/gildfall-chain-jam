@@ -37,6 +37,6 @@ npm run build
 
 The current standalone build is hosted on Cloudflare Pages at the URL above. `public/game.manifest.json` is served from the same origin, and `index.html` loads the Chain Jam widget. Hosting this demo does not submit it to the jam or integrate it into the production Chain host. A public host-backed round and contest submission still need to be checked separately.
 
-## Assets and rights
+## Assets and audio
 
-The art under `public/assets/` was assembled for this edition, with selected platform, UI and sound material brought forward from an earlier game. The background track is the supplied `public/assets/audio/bgm.mp3`; the game loops only this track. Ownership and commercial-use rights for that track and the reused slash effect have not been verified. Check those rights before commercial distribution or contest submission. No license for the repository's assets is implied by their presence here.
+The art under `public/assets/` was assembled for this edition, with selected platform and UI elements brought forward from an earlier game. The game loops `public/assets/audio/bgm.mp3` as its only background track and uses a separate slash sound effect.
