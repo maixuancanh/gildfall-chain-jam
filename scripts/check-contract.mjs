@@ -5,8 +5,11 @@ import solc from 'solc';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 export function compileContract() {
-  const files = ['contracts/JinxwellGame.sol', 'vendor/casino-sdk/simulator/contracts/ICasinoGameV2.sol'];
-  const sources = Object.fromEntries(files.map(file => [file, { content: readFileSync(path.join(root, file), 'utf8') }]));
+  const files = {
+    'contracts/JinxwellGame.sol': 'contracts/JinxwellGame.sol',
+    'chain-casino-sdk/ICasinoGameV2.sol': 'vendor/casino-sdk/simulator/contracts/ICasinoGameV2.sol',
+  };
+  const sources = Object.fromEntries(Object.entries(files).map(([source, file]) => [source, { content: readFileSync(path.join(root, file), 'utf8') }]));
   const output = JSON.parse(solc.compile(JSON.stringify({ language: 'Solidity', sources, settings: { optimizer: { enabled: true, runs: 200 }, evmVersion: 'shanghai', outputSelection: { '*': { '*': ['abi', 'evm.bytecode.object', 'evm.deployedBytecode.object'] } } } })));
   const errors = (output.errors ?? []).filter(e => e.severity === 'error');
   if (errors.length) throw new Error(errors.map(e => e.formattedMessage).join('\n'));

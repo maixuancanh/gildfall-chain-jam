@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ICasinoGameV2, SessionContext, StepResult, SessionPhase} from "../vendor/casino-sdk/simulator/contracts/ICasinoGameV2.sol";
+import {ICasinoGameV2, SessionContext, StepResult, SessionPhase} from "chain-casino-sdk/ICasinoGameV2.sol";
 
 /// @notice One precommitted route/depth, one random word, one settlement. No timing input.
 contract JinxwellGame is ICasinoGameV2 {

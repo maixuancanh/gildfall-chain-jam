@@ -1,5 +1,7 @@
 node_modules/
 dist/
+/contracts/cache/
+/contracts/out/
 .env
 .env.*
 *.log
