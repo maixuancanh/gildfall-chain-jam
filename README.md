@@ -13,15 +13,21 @@ npm ci
 npm run dev
 ```
 
-Open <http://127.0.0.1:4188/>. This repository includes the guest bridge and contract interface used by the game, but not the complete Chain simulator. To test a host-backed session, obtain the casino SDK and local simulator from [Chain's SDK page](https://sdk.chain.wtf/casino). Copy `contracts/JinxwellGame.sol` into the simulator's `contracts` directory, run its local node and harness as directed by that SDK, and keep the game server running on port 4188. In the harness, use `http://127.0.0.1:4188/` as the game URL and select the `JinxwellGame` contract. The simulator's chUSD test balance is separate from the standalone practice balance.
+Open <http://127.0.0.1:4188/> for practice. To use the Chain simulator, keep the game server running and start this in another terminal:
+
+```sh
+npx --package=@chain-protocol/cli@0.7.0 chain dev casino --frontend-url http://127.0.0.1:4188
+```
+
+Open the simulator URL and select Gildfall.
 
 ## How the SDK fits into Gildfall
 
-`public/game.manifest.json` declares the full-iframe game and its host capabilities. The contract keeps the identifier `JinxwellGame`; the game shown to players is Gildfall. When the page runs inside the Chain host, `src/adapter.js` connects through `@chain/casino-sdk/guest`. It reads the host's wallet, balance and session state, applies the host wager limit, and calls `openSession` with the wager and ABI-encoded route/depth selection from `src/codec.js`.
+`deployment.ts` points Chain at the Slot Engine title in `slot/title.json`. Each route and depth combination has its own weighted table. The guest checks the host wager limit for that configuration before opening a session.
 
-The Solidity contract implements `ICasinoGameV2`. `onSessionStart` validates the wager and selection, reserves the maximum possible profit and requests one random word. `onRandomness` maps that word to one of 10,000 tickets, calculates the payout and returns the settled game state. The guest decodes that state, checks the host-reported payout against the paytable and reveals the result. It can reconnect to a pending host session after a reload. The standalone demo follows the same payout rules using browser cryptographic randomness, but does not open a host session or place an on-chain wager.
+The Slot Engine settles the payout. The guest checks the reported amount against the paytable and plays a matching haul before revealing the result. Practice uses the same odds with browser randomness. The original Solidity contract remains for parity checks.
 
-For implementation checks, run `npm test`, `npm run check:contract` and `npm run build`. These cover the paytable, JavaScript/Solidity agreement, contract lifecycle and production build; they do not establish a live-chain deployment.
+Run `npm test` and `npm run build` to verify the paytables, playback mapping, reference contract and frontend build.
 
 ## How RTP is calculated
 

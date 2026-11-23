@@ -1,0 +1,50 @@
+{
+  "name": "Gildfall",
+  "betConfigurations": [
+    {
+      "name": "route-1-depth-1",
+      "tierList": "1-1.csv",
+      "prizeDenominator": 10000
+    },
+    {
+      "name": "route-1-depth-2",
+      "tierList": "1-2.csv",
+      "prizeDenominator": 10000
+    },
+    {
+      "name": "route-1-depth-3",
+      "tierList": "1-3.csv",
+      "prizeDenominator": 10000
+    },
+    {
+      "name": "route-2-depth-1",
+      "tierList": "2-1.csv",
+      "prizeDenominator": 10000
+    },
+    {
+      "name": "route-2-depth-2",
+      "tierList": "2-2.csv",
+      "prizeDenominator": 10000
+    },
+    {
+      "name": "route-2-depth-3",
+      "tierList": "2-3.csv",
+      "prizeDenominator": 10000
+    },
+    {
+      "name": "route-3-depth-1",
+      "tierList": "3-1.csv",
+      "prizeDenominator": 10000
+    },
+    {
+      "name": "route-3-depth-2",
+      "tierList": "3-2.csv",
+      "prizeDenominator": 10000
+    },
+    {
+      "name": "route-3-depth-3",
+      "tierList": "3-3.csv",
+      "prizeDenominator": 10000
+    }
+  ]
+}

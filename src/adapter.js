@@ -1,6 +1,6 @@
-import { connectGameToHost, computeMaxWager } from '@chain/casino-sdk/guest';
-import { encodeGameData, decodeGameData, decodeGameState } from './codec.js';
-import { getPaytable, payoutFor, MAX_WAGER } from './math.js';
+import { connectGameToHost } from '@chain-protocol/casino-sdk/guest';
+import { encodeSlotBet, decodeSlotBet, decodeSlotOutcome } from './slot-codec.js';
+import { payoutFor, MAX_WAGER } from './math.js';
 import { freshLedger, openDemo, finishDemo } from './ledger.js';
 
 const terminal = row => row.phaseName === 'SETTLED' || row.phase === 3;
@@ -17,21 +17,20 @@ export function createAdapter(notify) {
   function syncHost() {
     if (!snapshot) { state={...state,ready:false,message:'Waiting for host connection…'};emit();return; }
     const address=snapshot.integration?.gameAddress?.toLowerCase();
-    const nextNamespace=`jinxwell.host.${snapshot.integration?.chainId}.${address}.${snapshot.wallet.address}`;
+    const nextNamespace=`jinxwell.host.${snapshot.integration?.chainId}.${address}.${snapshot.wallet.smartWalletAddress ?? snapshot.wallet.address}`;
     if(namespace!==nextNamespace){ namespace=nextNamespace; storedKey='';state.current=null;try{storedKey=sessionStorage.getItem(namespace)||'';}catch{} }
     const rows=(snapshot.sessions?.items||[]).filter(row=>row.gameAddress?.toLowerCase()===address);
     const row=rows.find(r=>r.sessionKey===storedKey) || (!opening ? rows.find(r=>!terminal(r)&&!cancelled(r)) : null);
-    state={...state,ready:!!api && snapshot.wallet?.status==='ready',decimals:snapshot.token?.decimals??18,symbol:snapshot.token?.symbol||'tokens',balance:snapshot.balances?.smartVaultBalance,message:snapshot.wallet?.status==='ready'?'Chain host · verifiable settlement':`Wallet: ${snapshot.wallet?.status||'unavailable'}`};
-    state.history=rows.filter(terminal).map(r=>{try{if(!r.raw?.gameData||!r.raw?.gameState||r.payout===undefined)return null;const bet=decodeGameData(r.raw.gameData),outcome=decodeGameState(r.raw.gameState),wager=r.wager??r.stake;if(!outcome||payoutFor(BigInt(wager),outcome.multiplierBps)!==BigInt(r.payout))return null;return{id:r.sessionId,...bet,outcome,wager,payout:r.payout,settledAt:r.settledAt??r.lastEventTimestamp};}catch{return null;}}).filter(Boolean).sort((a,b)=>Number(b.settledAt??0)-Number(a.settledAt??0)).slice(0,12);
+    state={...state,ready:!!api && snapshot.wallet?.status==='ready',decimals:snapshot.token?.decimals??18,symbol:snapshot.token?.symbol||'tokens',balance:snapshot.balances?.smartWalletBalance ?? snapshot.balances?.smartVaultBalance,message:snapshot.wallet?.status==='ready'?'Chain host · verifiable settlement':`Wallet: ${snapshot.wallet?.status||'unavailable'}`};
+    state.history=rows.filter(terminal).map(r=>{try{if(!r.raw?.gameData||!r.raw?.gameState||r.payout===undefined)return null;const bet=decodeSlotBet(r.raw.gameData),outcome=decodeSlotOutcome(r.raw.gameState,bet),wager=r.wager??r.stake;if(!outcome||payoutFor(BigInt(wager),outcome.multiplierBps)!==BigInt(r.payout))return null;return{id:r.sessionId,...bet,outcome,wager,payout:r.payout,settledAt:r.settledAt??r.lastEventTimestamp};}catch{return null;}}).filter(Boolean).sort((a,b)=>Number(b.settledAt??0)-Number(a.settledAt??0)).slice(0,12);
     if(row){
       storedKey=row.sessionKey; try{sessionStorage.setItem(namespace,storedKey);}catch{}
       if(cancelled(row)) state.current={id:row.sessionId,cancelled:true,revealed:true,label:row.phaseName||'Round closed'};
       else if(row.raw?.gameData){
         try {
-          const bet=decodeGameData(row.raw.gameData);
+          const bet=decodeSlotBet(row.raw.gameData);
           const previous=state.current;
-          let outcome=terminal(row) && row.raw.gameState ? decodeGameState(row.raw.gameState) : null;
-          if(outcome && !('multiplierBps' in outcome)) outcome=outcome.outcome??outcome;
+          const outcome=terminal(row) ? decodeSlotOutcome(row.raw.gameState, bet) : null;
           state.current={id:row.sessionId,sessionKey:row.sessionKey,...bet,wager:row.wager??row.stake,outcome,randomness:row.raw?.randomness,payout:row.payout,phase:row.phaseName,createdAt:row.openedAt,revealed:previous?.id===row.sessionId&&previous.revealed};
           // A result without host-confirmed payout is incomplete. Never turn an absent value into zero.
           if(outcome && row.payout===undefined) state.current.outcome=null;
@@ -55,12 +54,7 @@ export function createAdapter(notify) {
       reconnectTimer=setInterval(()=>{if(!snapshot&&!destroyed){api=undefined;connectAttempt();}},2500);
       handshakeTimeout=setTimeout(()=>{if(!snapshot&&!destroyed){clearInterval(reconnectTimer);state.ready=false;state.message='Host connection timed out. Reload the whole host page to reconnect.';emit();}},12000);
     },
-    maxWager(route,depth){
-      if(!embedded)return 10000n;
-      const maxMultiplierX=Math.max(...getPaytable(route,depth).map(r=>r.multiplierBps))/10000;
-      const result=computeMaxWager(snapshot,{maxMultiplierX});
-      return result.kind==='limit'?result.maxWager:null;
-    },
+    maxWager(){return embedded ? null : 10000n;},
     async open(bet){
       if(opening||!state.ready)throw new Error('Wait for the game to be ready.');
       if(state.current&&!state.current.revealed)throw new Error('There is already an active haul.');
@@ -68,12 +62,22 @@ export function createAdapter(notify) {
       if(wager<=0n)throw new Error('Wager must be greater than zero.');
       if(wager>MAX_WAGER)throw new Error('This wager exceeds the game contract limit.');
       if(state.balance===undefined||wager>BigInt(state.balance))throw new Error('Not enough balance for this wager.');
-      const cap=this.maxWager(bet.route,bet.depth);if(embedded&&cap===null)throw new Error('Host wager limits are not available yet.');if(cap!==null&&wager>cap)throw new Error('This wager exceeds the current limit.');
+      if (!embedded && wager > this.maxWager()) throw new Error('This wager exceeds the practice limit.');
       opening=true;
       try{
         if(!embedded){await transact(ledger=>openDemo(ledger,{...bet,randomness:randomWord(),id:crypto.randomUUID()}));return;}
+        const gameData = encodeSlotBet(bet.route, bet.depth);
+        const accountScope = namespace;
+        const host = api;
+        const limit = await host.getMaxWager({ gameData });
+        if (namespace !== accountScope || api !== host || !state.ready || wager > BigInt(state.balance ?? '0')) {
+          throw new Error('Host account or balance changed during the wager check.');
+        }
+        if (limit?.kind !== 'no-limit' && (limit?.kind !== 'limit' || wager > BigInt(limit.maxWager))) {
+          throw new Error('Wager exceeds host limits or the limit is unavailable.');
+        }
         state.current=null;
-        const result=await api.openSession({wager:wager.toString(),gameData:encodeGameData(bet.route,bet.depth)});
+        const result=await host.openSession({wager:wager.toString(),gameData});
         storedKey=result.sessionKey;try{sessionStorage.setItem(namespace,storedKey);}catch{}
         state.current={...bet,id:storedKey,sessionKey:storedKey,outcome:null,revealed:false};syncHost();
       }finally{opening=false;}

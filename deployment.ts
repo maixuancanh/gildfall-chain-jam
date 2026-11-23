@@ -1,7 +1,4 @@
 export default {
-  kind: 'casino',
-  contract: {
-    source: 'JinxwellGame.sol',
-    name: 'JinxwellGame',
-  },
+  kind: 'slot',
+  title: 'slot/title.json',
 } as const;
